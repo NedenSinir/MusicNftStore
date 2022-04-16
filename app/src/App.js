@@ -2,39 +2,14 @@ import React, { useEffect, useState } from 'react';
 import './App.css';
 import { Connection, PublicKey, clusterApiUrl } from '@solana/web3.js';
 import { Program, Provider, web3 } from '@project-serum/anchor';
-import idl from './idl.json';
-import kp from './keypair.json'
 import { Metadata } from '@metaplex-foundation/mpl-token-metadata';
-
-
-// Constants
-
-// SystemProgram is a reference to the Solana runtime!
-const { SystemProgram, Keypair } = web3;
-
-// Create a keypair for the account that will hold the GIF data.
-const arr = Object.values(kp._keypair.secretKey)
-const secret = new Uint8Array(arr)
-const baseAccount = web3.Keypair.fromSecretKey(secret)
-
-// Get our program's id from the IDL file.
-const programID = new PublicKey(idl.metadata.address);
-
-// Set our network to devnet.
-const network = clusterApiUrl('devnet');
-
-// Controls how we want to acknowledge when a transaction is "done".
-const opts = {
-  preflightCommitment: "processed"
-}
-
+import { render } from '@testing-library/react';
 
 
 
 const App = () => {
   // State
   const [walletAddress, setWalletAddress] = useState(null);
-  const [inputValue, setInputValue] = useState("0");
   const [getNftMetadata, setNftMetadata] = useState([]);
 
 
@@ -73,68 +48,41 @@ const App = () => {
       console.log('Connected with Public Key:', response.publicKey.toString());
       setWalletAddress(response.publicKey.toString());
     }
-    
+    await getMetadata()
   };
-  
-  
-  const getProvider = () => {
-    const connection = new Connection(network, opts.preflightCommitment);
-    const provider = new Provider(
-      connection, window.solana, opts.preflightCommitment,
-    );
-    return provider;
-  }
-  const getNum = async() => {
-    try {
-      const provider = getProvider();
-      const program = new Program(idl, programID, provider);
-      const account = await program.account.baseAccount.fetch(baseAccount.publicKey);
-      
-      console.log("Got the account", account)
+  const getMetadata = async () =>{
+    const connection = new Connection("https://api.devnet.solana.com");
+    const nftsmetadata = await getAllNfts();
+    var ImageAndSounds=[];
+    for(let nftIndex in nftsmetadata){
+    let selecetNft= nftsmetadata[nftIndex];
+    const nftMint=selecetNft.mint;
+    const metadataPDA = await Metadata.getPDA(new PublicKey(nftMint));
+    const tokenMetadata = await Metadata.load(connection, metadataPDA);
+    const uri = tokenMetadata.data.data.uri;
+    const json = await fetchUri(uri);
+    const image=json["image"];
+    try{
 
-    } catch (error) {
-      console.log("Error in getGifList: ", error)
-      setInputValue(0);
+      const sound = json["properties"]["files"][1]["uri"];
+      if(sound != null){
+        let tempArr=[image,sound];
+        ImageAndSounds.push(tempArr);
+      }
     }
+    catch{
+      continue;
+    }
+    
+    }
+    setNftMetadata(ImageAndSounds);
+  
+  }
+  const fetchUri = async (uri) =>{
+    return fetch(uri).then(res => res.json())
   }
   
- const CreateBaseAccount= async() =>{
-  try {
-    const provider = getProvider();
-    const program = new Program(idl, programID, provider);
-    console.log("ping")
-    await program.rpc.initialize({
-      accounts: {
-        baseAccount: baseAccount.publicKey,
-        user: provider.wallet.publicKey,
-        systemProgram: SystemProgram.programId,
-      },
-      signers: [baseAccount]
-    });
-    await getNum()
 
-  } catch(error) {
-    console.log("Error creating BaseAccount account:", error)
-  }
- }
-
- const IncreaseNum= async() =>{
-  try {
-    const provider = getProvider();
-    const program = new Program(idl, programID, provider);
-    const account = await program.account.baseAccount.fetch(baseAccount.publicKey);
-    console.log("increse")
-    await program.rpc.increse({
-      accounts: {
-        baseAccount: baseAccount.publicKey,
-        user: provider.wallet.publicKey,
-      },
-    });
-    setInputValue(account.num.toNumber())
-  } catch(error) {
-    console.log("Error incresing num :", error)
-  }
- }
  const getAllNfts = async () =>{
   const connection = new Connection("https://api.devnet.solana.com");
   const ownerPublickey = walletAddress;
@@ -145,13 +93,33 @@ const App = () => {
  useEffect(() => {
   const onLoad = async () => {
     await checkIfWalletIsConnected();
+   
   };
   window.addEventListener('load', onLoad);
   return () => window.removeEventListener('load', onLoad);
 }, []);
 
 
+function renderSoundRows() {
+  const products =getNftMetadata;
 
+  const list = []
+
+  products.forEach((product) => {
+    list.push(<li>
+      <img src = {product[0]}></img>
+      <audio controls src = {product[1]} ></audio>
+    </li>)
+  })
+
+  return (
+    <div>
+      {list}
+    </div>
+  )
+}
+
+  
     return (
       <div className="connected-container">
         <button
@@ -160,18 +128,15 @@ const App = () => {
   >
   Connect to Wallet
   </button>
-        <button className="cta-button submit-gif-button" onClick={CreateBaseAccount}>
-          Do One-Time Initialization For GIF Program Account
-        </button>
-        <button className="cta-button submit-gif-button" onClick={getNum}>
-          get number
-        </button>
-        <button className="cta-button submit-gif-button" onClick={IncreaseNum}>
-          increse number
-        </button>
-
+  <button className="cta-button submit-gif-button" onClick={getMetadata}>
+          refresh metadata
+        </button> 
         <div className="">
-        <h1>{inputValue}</h1>
+        <h1 >by Neden Sinir#9150</h1>
+        <h4>connected with: {walletAddress}</h4>
+        <h5>wait after clicking get metadata fetching nfts may take time</h5>
+        <h1 >album photo/music play</h1>
+        {renderSoundRows()}
       </div>
       </div>
     )
