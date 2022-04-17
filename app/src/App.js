@@ -76,7 +76,6 @@ const App = () => {
     
     }
     setNftMetadata(ImageAndSounds);
-  
   }
   const fetchUri = async (uri) =>{
     return fetch(uri).then(res => res.json())
@@ -99,7 +98,19 @@ const App = () => {
   return () => window.removeEventListener('load', onLoad);
 }, []);
 
-
+function renderText(){
+  if(walletAddress != null){
+  return( 
+    
+    <div>
+    <h1 >by Neden Sinir#9150</h1>
+  <h4>connected with: {walletAddress}</h4>
+  <h5>wait after clicking get metadata fetching nfts may take time</h5>
+  <h1 >album photo/music play</h1>
+  </div>
+  )
+}
+}
 function renderSoundRows() {
   const products =getNftMetadata;
 
@@ -132,10 +143,7 @@ function renderSoundRows() {
           refresh metadata
         </button> 
         <div className="">
-        <h1 >by Neden Sinir#9150</h1>
-        <h4>connected with: {walletAddress}</h4>
-        <h5>wait after clicking get metadata fetching nfts may take time</h5>
-        <h1 >album photo/music play</h1>
+        {renderText()}
         {renderSoundRows()}
       </div>
       </div>
