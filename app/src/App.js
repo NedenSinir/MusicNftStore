@@ -1,15 +1,17 @@
 import React, { useEffect, useState } from 'react';
 import './App.css';
 import { Connection, PublicKey, clusterApiUrl } from '@solana/web3.js';
-import { Program, Provider, web3 } from '@project-serum/anchor';
+import { Program, Provider, Wallet, web3 } from '@project-serum/anchor';
 import { Metadata } from '@metaplex-foundation/mpl-token-metadata';
 import { render } from '@testing-library/react';
+import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 
 
 
 const App = () => {
   // State
   const [walletAddress, setWalletAddress] = useState(null);
+  const [wallet, setWallet] = useState(null);
   const [getNftMetadata, setNftMetadata] = useState([]);
 
 
@@ -46,6 +48,7 @@ const App = () => {
     if (solana) {
       const response = await solana.connect();
       console.log('Connected with Public Key:', response.publicKey.toString());
+      console.log(response)
       setWalletAddress(response.publicKey.toString());
     }
     await getMetadata()
@@ -89,6 +92,40 @@ const App = () => {
 
  }
 
+ const getTokens =async () =>{
+  const connection = new Connection("https://api.devnet.solana.com");
+  
+  const ownerPublickey = walletAddress;
+  try{
+
+    let response = await connection.getParsedTokenAccountsByOwner(new PublicKey(ownerPublickey), {
+      programId: TOKEN_PROGRAM_ID,
+    });
+    let solBalance = await connection.getBalance(new PublicKey(ownerPublickey))
+
+    console.log("Solana Balance: ",solBalance/10**9)
+    console.log("===================")
+    for(let accountInfo of response.value)
+      {
+      
+        const amount = parseInt(accountInfo.account.data["parsed"]["info"]["tokenAmount"]["amount"])
+        const decimals = parseInt(accountInfo.account.data["parsed"]["info"]["tokenAmount"]["decimals"])
+      if (amount === 0 || decimals ===0 ) continue
+      const realAmount = amount/10**decimals
+      console.log(`Token: ${accountInfo.account.data["parsed"]["info"]["mint"]}`);
+      console.log(`Amount: ${realAmount}`)
+      console.log("===================")
+
+      
+    }
+
+
+  }catch(err){
+    console.log(err)
+  }
+
+ }
+
  useEffect(() => {
   const onLoad = async () => {
     await checkIfWalletIsConnected();
@@ -99,6 +136,8 @@ const App = () => {
 }, []);
 
 function renderText(){
+  getTokens()
+
   if(walletAddress != null){
   return( 
     
